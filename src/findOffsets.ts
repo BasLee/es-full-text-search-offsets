@@ -1,5 +1,10 @@
-export function findOffsets(textWithMarkers) {
-  const spans = [];
+import { END_MARKER, MARKERS, START_MARKER } from './markers.ts';
+import type { Offsets } from './Model.ts';
+
+export function findOffsets(
+  textWithMarkers: string
+): Offsets[] {
+  const offsets: Offsets[] = [];
   let removed = 0;
   let start = -1;
 
@@ -15,12 +20,12 @@ export function findOffsets(textWithMarkers) {
       if (start === -1) {
         throw new Error(`End marker without start at ${offset}`);
       }
-      spans.push({start, end: offset});
+      offsets.push({ start, end: offset });
       start = -1;
     }
   }
   if (start !== -1) {
-    throw new Error(`unclosed start marker at ${start}`);
+    throw new Error(`Unclosed start marker at ${start}`);
   }
-  return spans;
+  return offsets;
 }

@@ -1,6 +1,12 @@
-export async function searchEs(term) {
+import { END_MARKER, START_MARKER } from './markers.ts';
+import type { SearchResult } from './Model.ts';
+
+const ES = process.env.ES_URL ?? 'http://localhost:9200';
+const INDEX = 'demo';
+
+export async function searchEs(term: string): Promise<SearchResult> {
   return fetchEs(`/${INDEX}/_search`, {
-    query: {match: {content: term}},
+    query: { match: { content: term } },
     highlight: {
       fields: {
         // the whole field as a single snippet containing every match:
@@ -14,7 +20,7 @@ export async function searchEs(term) {
   });
 }
 
-async function fetchEs(path, body, method = 'POST') {
+async function fetchEs(path: string, body?: unknown, method = 'POST'): Promise<SearchResult> {
   const res = await fetch(`${ES}${path}`, {
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -23,6 +29,5 @@ async function fetchEs(path, body, method = 'POST') {
   if (!res.ok) {
     throw new Error(`${method} ${path} -> ${res.status} ${await res.text()}`);
   }
-  return res.json();
+  return res.json() as Promise<SearchResult>;
 }
-
