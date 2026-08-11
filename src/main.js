@@ -6,14 +6,14 @@ const INDEX = 'demo';
  */
 const START_MARKER = '\ue000';
 const END_MARKER = '\ue001';
-const MARKERS = /[\ue000\ue001]/g;
+const MARKERS = new RegExp(`[${START_MARKER}${END_MARKER}]`, 'g');
 
 main()
 
 async function main() {
   const result = await searchEs('bar');
 
-  for (const doc of parse(result)) {
+  for (const doc of parseHits(result.hits.hits)) {
     console.log(`doc ${doc.id}:`, `\n--> body:`, doc.body);
     for (const span of doc.spans) {
       const sliced = doc.body.slice(span.start, span.end);
@@ -68,8 +68,8 @@ function findOffsets(textWithMarkers) {
   return spans;
 }
 
-function parse(result, field = 'content') {
-  return result.hits.hits.flatMap((hit) => {
+function parseHits(hits, field = 'content') {
+  return hits.flatMap((hit) => {
     const marked = hit.highlight?.[field];
     if (!marked) {
       return [];
