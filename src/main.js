@@ -6,6 +6,7 @@ const INDEX = 'demo';
  */
 const START_MARKER = '\ue000';
 const END_MARKER = '\ue001';
+const MARKERS = /[\ue000\ue001]/g;
 
 main()
 
@@ -13,9 +14,9 @@ async function main() {
   const result = await searchEs('bar');
 
   for (const doc of parse(result)) {
-    console.log('doc: ', doc.id, doc.clean);
+    console.log(`doc ${doc.id}:`, `\n--> body:`, doc.body);
     for (const span of doc.spans) {
-      const sliced = doc.clean.slice(span.start, span.end);
+      const sliced = doc.body.slice(span.start, span.end);
       console.log(`--> hit: ${sliced} (${span.start}-${span.end})`);
     }
   }
@@ -50,21 +51,21 @@ async function fetchEs(path, body, method = 'POST') {
   return res.json();
 }
 
-function findOffsets(textWithMarkedHits) {
+function findOffsets(textWithMarkers) {
   const spans = [];
-  let clean = '';
+  let removed = 0;
   let start = -1;
 
-  for (const char of textWithMarkedHits) {
-    if (char === START_MARKER) {
-      start = clean.length;
-    } else if (char === END_MARKER) {
-      spans.push({ start, end: clean.length });
+  for (const match of textWithMarkers.matchAll(MARKERS)) {
+    const offset = match.index - removed;
+    removed += 1;
+    if (match[0] === START_MARKER) {
+      start = offset;
     } else {
-      clean += char;
+      spans.push({ start, end: offset });
     }
   }
-  return { clean, spans };
+  return spans;
 }
 
 function parse(result, field = 'content') {
@@ -73,10 +74,15 @@ function parse(result, field = 'content') {
     if (!marked) {
       return [];
     }
-    return marked.map((value) => {
-      const { clean, spans } = findOffsets(value);
-      return { id: hit._id, clean, spans };
-    });
+    const source = hit._source?.[field];
+    const values = Array.isArray(source) ? source : [source];
+    if (values.length !== marked.length) {
+      throw new Error(`${hit._id}: ${marked.length} reported but ${values.length} found in ${field}`);
+    }
+    return marked.map((value, i) => ({
+      id: hit._id,
+      body: values[i],
+      spans: findOffsets(value),
+    }));
   });
 }
-
